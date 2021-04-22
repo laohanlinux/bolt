@@ -156,3 +156,7 @@ func randomPgids(n int) []pgid {
 	sort.Sort(pgids)
 	return pgids
 }
+
+func init() {
+	testing.Init()
+}

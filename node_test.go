@@ -1,6 +1,12 @@
 package bolt
 
 import (
+	"container/list"
+	"fmt"
+	"github.com/awalterschulze/gographviz"
+	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 	"unsafe"
 )
@@ -103,14 +109,16 @@ func TestNode_write_LeafPage(t *testing.T) {
 func TestNode_split(t *testing.T) {
 	// Create a node.
 	n := &node{inodes: make(inodes, 0), bucket: &Bucket{tx: &Tx{db: &DB{}, meta: &meta{pgid: 1}}}}
+	t.Log(n.isLeaf)
+
 	n.put([]byte("00000001"), []byte("00000001"), []byte("0123456701234567"), 0, 0)
 	n.put([]byte("00000002"), []byte("00000002"), []byte("0123456701234567"), 0, 0)
 	n.put([]byte("00000003"), []byte("00000003"), []byte("0123456701234567"), 0, 0)
 	n.put([]byte("00000004"), []byte("00000004"), []byte("0123456701234567"), 0, 0)
 	n.put([]byte("00000005"), []byte("00000005"), []byte("0123456701234567"), 0, 0)
-
 	// Split between 2 & 3.
 	n.split(100)
+	t.Logf("%#v", n)
 
 	var parent = n.parent
 	if len(parent.children) != 2 {
@@ -122,6 +130,7 @@ func TestNode_split(t *testing.T) {
 	if len(parent.children[1].inodes) != 3 {
 		t.Fatalf("exp=3; got=%d", len(parent.children[1].inodes))
 	}
+	PrintDag(n, "g.dot")
 }
 
 // Ensure that a page with the minimum number of inodes just returns a single node.
@@ -153,4 +162,45 @@ func TestNode_split_SinglePage(t *testing.T) {
 	if n.parent != nil {
 		t.Fatalf("expected nil parent")
 	}
+}
+
+
+func PrintDag(n *node, fs string) {
+	graphAst, _ := gographviz.ParseString(`digraph G {}`)
+	g := gographviz.NewGraph()
+	if err := gographviz.Analyse(graphAst, g); err != nil {
+		panic(err)
+	}
+
+	nodeID := func(inodes inodes) string {
+		var str []string
+		for _, inode := range inodes {
+			str = append(str, fmt.Sprintf("%s", inode.key))
+		}
+		if len(inodes) == 0 {
+			return  fmt.Sprintf("\"%s\"", "Root")
+		}
+		return fmt.Sprintf("\"%s\"", strings.Join(str, ", "))
+	}
+
+	if n.root() == nil {
+		return
+	}
+
+	var stack = list.New()
+	stack.PushBack(n.root())
+	for stack.Len() > 0 {
+		n := stack.Front()
+		stack.Remove(n)
+		id1 := nodeID(n.Value.(*node).inodes)
+		_ = g.AddNode("", id1, nil)
+		for _, child := range n.Value.(*node).children {
+			id2 := nodeID(child.inodes)
+			_ = g.AddNode("", id2, nil)
+			_ = g.AddEdge(id1, id2, true, nil)
+			stack.PushBack(child)
+		}
+	}
+	_ = os.Remove(fs)
+	_ = ioutil.WriteFile(fs, []byte(g.String()), os.ModePerm)
 }
