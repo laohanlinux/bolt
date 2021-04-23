@@ -367,17 +367,17 @@ func (n *node) spill() error {
 		}
 
 		// Allocate contiguous space for the node.
-		p, err := tx.allocate((node.size() / tx.db.pageSize) + 1)
-		if err != nil {
-			return err
-		}
-
-		// Write the node.
-		if p.id >= tx.meta.pgid {
-			panic(fmt.Sprintf("pgid (%d) above high water mark (%d)", p.id, tx.meta.pgid))
-		}
-		node.pgid = p.id
-		node.write(p)
+		//p, err := tx.allocate((node.size() / tx.db.pageSize) + 1)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//// Write the node.
+		//if p.id >= tx.meta.pgid {
+		//	panic(fmt.Sprintf("pgid (%d) above high water mark (%d)", p.id, tx.meta.pgid))
+		//}
+		//node.pgid = p.id
+		//node.write(p)
 		node.spilled = true
 
 		// Insert into parent inodes.

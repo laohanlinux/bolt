@@ -105,6 +105,19 @@ func TestNode_write_LeafPage(t *testing.T) {
 	}
 }
 
+func TestNode_split1(t *testing.T) {
+	n := &node{inodes: make(inodes, 0), bucket: &Bucket{tx: &Tx{db: &DB{}, meta: &meta{pgid: 1}}}}
+	for i:=0 ; i < 100; i ++ {
+		n.put([]byte(fmt.Sprintf("%0x", i)), []byte(fmt.Sprintf("%0x", i)), []byte(fmt.Sprintf("%0x", i)), 0, 0)
+	}
+	n.split(100)
+	err := n.spill()
+	if err != nil {
+		t.Fatalf("expected nil, actual %v", err)
+	}
+	PrintDag(n.root(), "TestSpill.dot")
+}
+
 // Ensure that a node can split into appropriate subgroups.
 func TestNode_split(t *testing.T) {
 	// Create a node.
